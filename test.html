@@ -8,19 +8,28 @@
     <canvas id="canvas" width="640" height="480"></canvas>
     <img id="snapshot" src="">
     <button id="toggleSnapshot">開始擷取</button>
+    <select id="videoSource"></select>
 
     <script>
         const video = document.querySelector('#video');
         const canvas = document.querySelector('#canvas');
         const snapshot = document.querySelector('#snapshot');
         const toggleSnapshotButton = document.querySelector('#toggleSnapshot');
+        const videoSource = document.querySelector('#videoSource');
         const context = canvas.getContext('2d');
         let snapshotIntervalId = null;
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(stream) {
-                    video.srcObject = stream;
+            navigator.mediaDevices.enumerateDevices()
+                .then(function(devices) {
+                    devices.forEach(function(device) {
+                        if (device.kind === 'videoinput') {
+                            const option = document.createElement('option');
+                            option.value = device.deviceId;
+                            option.textContent = device.label;
+                            videoSource.appendChild(option);
+                        }
+                    });
                 })
                 .catch(function(error) {
                     console.log("錯誤發生了!", error);
@@ -38,8 +47,20 @@
                 snapshotIntervalId = null;
                 toggleSnapshotButton.textContent = '開始擷取';
             } else {
-                snapshotIntervalId = setInterval(takeSnapshot, 1000); // 每隔1秒擷取一次
-                toggleSnapshotButton.textContent = '停止擷取';
+                const constraints = {
+                    video: {
+                        deviceId: {exact: videoSource.value}
+                    }
+                };
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(function(stream) {
+                        video.srcObject = stream;
+                        snapshotIntervalId = setInterval(takeSnapshot, 1000); // 每隔1秒擷取一次
+                        toggleSnapshotButton.textContent = '停止擷取';
+                    })
+                    .catch(function(error) {
+                        console.log("錯誤發生了!", error);
+                    });
             }
         });
 
